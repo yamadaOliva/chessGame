@@ -37,7 +37,7 @@ void removeWindows();
 void post(int, char*);
 void postMoveCommand(int);
 wchar_t selectPiece(int*, int*, int*, int*);
-
+void timeCounter();
 WINDOW* MENU_WIN;
 WINDOW* SERVER_WIN;
 WINDOW* PROMOTION_WIN;
@@ -117,6 +117,19 @@ int main(int argc, char** argv) {
     return 0;
 }
 
+void timeCounter(){
+    int i = 900;
+    int min, sec;
+    while(i > 0){
+        min = i / 60;
+        sec = i % 60;
+        mvprintw(1, 1, "%d:%d", min, sec);
+        refresh();
+        sleep(1);
+        i--;
+    }
+}
+ 
 void removeWindows() {
     delwin(SERVER_WIN);
     delwin(PROMOTION_WIN);
@@ -360,6 +373,7 @@ void showMenu() {
     wrefresh(MENU_WIN);
 
     while (is_running) {
+
         switch (getch()) {
             case KEY_UP:
                 if (arrow_y == quit_y) {

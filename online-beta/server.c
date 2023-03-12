@@ -38,6 +38,7 @@
 typedef struct player {
     int sock;
     int lost;
+    int room;
 } Player;
 
 void intro();
@@ -51,6 +52,7 @@ bool isPromotionPossible(int, int);
 void promote(char*, int, int, int);
 void whoIsNext(int, int);
 void sendBoard(int);
+void sendReverseBoard(int);
 bool isEmpty(int, int);
 bool isOwnPiece(int, int, int);
 bool isOpponentPiece(int, int, int);
@@ -58,18 +60,16 @@ void post(int, char*);
 void debugBoard();
 bool didAnyoneLose();
 void gameover();
-
+void createRoom();
 Player PLAYER[2];
 wchar_t** BOARD;
-
+int room[8]={0,0,0,0,0,0,0,0};
 int main(int argc, char** argv) {
     if (argc != 2) {
         printf("usage - %s <port>\n", argv[0]);
         return ERROR;
     }
-
     setlocale(LC_ALL, "");
-
     char header, message[BUFFER_SIZE];
     char* msg;
     int server_sock, client_sock, str_len, server_opt, someone, color;
@@ -241,9 +241,7 @@ int main(int argc, char** argv) {
                             if (!is_king_dead && isPromotionPossible(to_y, to_x)) { // e.g. the player can promote the pawn, send the request
                                 prom_y = to_y;
                                 prom_x = to_x;
-
                                 post(someone, "P What do you wanna change it to?");
-
                                 continue;
                             }
 
@@ -658,7 +656,6 @@ void promote(char* msg, int color, int prom_y, int prom_x) {
     else if (strcmp(msg, "knight") == 0) {
         BOARD[prom_y][prom_x] = color == WHITE ? WHITE_KNIGHT : BLACK_KNIGHT;
     }
-
     printf("the promotion is successful!!\n");    
 }
 
@@ -715,6 +712,32 @@ void sendBoard(int sock) {
     }
 }
 
+ void sendReverseBoard(int sock){
+    char buffer[BUFFER_SIZE] = {0, };
+    char temp[100] = {0, };
+
+    strcat(buffer, "B ");
+
+    strcat(buffer, "    +---+---+---+---+---+---+---+---+\n");
+    strcat(buffer, "    | h | g | f | e | d | c | b | a |\n");
+    for (int y = 7; y >= 0; y--) {
+        strcat(buffer, "+---+---+---+---+---+---+---+---+---+---+\n");
+        sprintf(temp, "| %d | %lc | %lc | %lc | %lc | %lc | %lc | %lc | %lc | %d |\n", 8 - y, BOARD[y][7], BOARD[y][6], BOARD[y][5], BOARD[y][4], BOARD[y][3], BOARD[y][2], BOARD[y][1], BOARD[y][0], 8 - y);
+        strcat(buffer, temp);
+    }
+    strcat(buffer, "+---+---+---+---+---+---+---+---+---+---+\n");
+    strcat(buffer, "    | h | g | f | e | d | c | b | a |\n");
+    strcat(buffer, "    +---+---+---+---+---+---+---+---+\n");
+    
+    if (sock == ALL) {
+        post(PLAYER[WHITE].sock, buffer);
+        post(PLAYER[BLACK].sock, buffer);
+    }
+    else {
+        post(sock, buffer);
+    }  
+ }
+
 bool didAnyoneLose() {
     if (PLAYER[WHITE].lost || PLAYER[BLACK].lost) {
         return true;
@@ -725,7 +748,7 @@ bool didAnyoneLose() {
 void gameover() {
     int winner = PLAYER[WHITE].lost ? PLAYER[BLACK].sock : PLAYER[WHITE].sock;
     int loser = PLAYER[WHITE].lost ? PLAYER[WHITE].sock : PLAYER[BLACK].sock;
- 
+
     printf("winner : %d loser : %d\n", winner, loser);
     post(loser, "G You lose.");
     post(winner, "G You have won the game!");
